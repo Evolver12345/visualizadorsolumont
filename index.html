@@ -1,0 +1,95 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="description" content="Visualizador 3D interativo do equipamento Solumont 007229.">
+  <title>Solumont · Visualizador 007229</title>
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='13' fill='%230b1119'/%3E%3Cpath d='M17 21h30M17 32h22M17 43h30' fill='none' stroke='%234fd1c5' stroke-width='6' stroke-linecap='round'/%3E%3C/svg%3E">
+  <style>
+    :root{color-scheme:dark;--bg:#071019;--panel:rgba(10,20,31,.9);--line:rgba(255,255,255,.12);--muted:#9aabba;--text:#f4f7fa;--accent:#55d6ca;--accent2:#b9fff7;--danger:#ff8a7a}
+    *{box-sizing:border-box}
+    html,body{height:100%;margin:0;overflow:hidden;background:var(--bg);font-family:Inter,ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif;color:var(--text)}
+    button,input{font:inherit}
+    button{color:inherit}
+    #stage{position:fixed;inset:0;touch-action:none}
+    canvas{display:block;width:100%;height:100%}
+    .topbar{position:fixed;z-index:5;top:max(18px,env(safe-area-inset-top));left:20px;right:20px;display:flex;justify-content:space-between;align-items:flex-start;pointer-events:none}
+    .brand,.actions,.status-card,.search-panel{pointer-events:auto;backdrop-filter:blur(18px);-webkit-backdrop-filter:blur(18px);background:var(--panel);border:1px solid var(--line);box-shadow:0 18px 48px rgba(0,0,0,.28)}
+    .brand{display:flex;gap:13px;align-items:center;padding:11px 14px 11px 11px;border-radius:15px}
+    .mark{display:grid;place-items:center;width:38px;height:38px;border-radius:11px;background:linear-gradient(145deg,#173443,#0c202c);color:var(--accent);font-weight:800;letter-spacing:-.08em}
+    .brand strong{display:block;font-size:.94rem;letter-spacing:.04em}.brand span{display:block;margin-top:2px;color:var(--muted);font-size:.78rem}
+    .actions{display:flex;gap:6px;padding:6px;border-radius:14px}
+    .icon-btn,.primary-btn{border:0;border-radius:9px;background:transparent;cursor:pointer;min-height:40px;padding:0 12px;transition:background .16s,color .16s,transform .16s}
+    .icon-btn:hover,.icon-btn:focus-visible{background:rgba(255,255,255,.09)}.icon-btn:active,.primary-btn:active{transform:scale(.97)}
+    .icon-btn svg{width:19px;height:19px;vertical-align:middle}.icon-btn span{margin-left:7px;font-size:.86rem}
+    .search-panel{position:fixed;z-index:6;top:88px;right:20px;width:min(380px,calc(100vw - 40px));max-height:calc(100vh - 122px);border-radius:18px;display:flex;flex-direction:column;overflow:hidden;opacity:0;transform:translateX(18px);pointer-events:none;transition:opacity .2s,transform .2s}
+    .search-panel.open{opacity:1;transform:none;pointer-events:auto}
+    .search-head{padding:16px;border-bottom:1px solid var(--line)}
+    .search-head-row{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px}.search-head strong{font-size:1rem}.search-head small{color:var(--muted)}
+    .search-box{display:flex;gap:9px;align-items:center;background:rgba(255,255,255,.06);border:1px solid transparent;border-radius:11px;padding:0 12px}.search-box:focus-within{border-color:rgba(85,214,202,.7)}
+    .search-box svg{width:17px;color:var(--muted)}.search-box input{width:100%;height:43px;color:var(--text);border:0;outline:0;background:transparent;font-size:16px}.search-box input::placeholder{color:#718391}
+    #results{list-style:none;padding:7px;margin:0;overflow:auto}.result{width:100%;border:0;background:transparent;text-align:left;padding:11px 12px;border-radius:10px;cursor:pointer}.result:hover,.result:focus-visible{background:rgba(255,255,255,.07)}
+    .result strong{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:.88rem;font-weight:600}.result span{display:block;margin-top:3px;color:var(--muted);font-size:.74rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    .empty{padding:24px 16px;text-align:center;color:var(--muted);font-size:.87rem}
+    .status-card{position:fixed;z-index:5;left:20px;bottom:max(20px,env(safe-area-inset-bottom));min-width:240px;max-width:min(420px,calc(100vw - 40px));padding:13px 15px;border-radius:14px}
+    .status-line{display:flex;gap:10px;align-items:center;font-size:.85rem}.dot{width:8px;height:8px;border-radius:50%;background:var(--accent);box-shadow:0 0 0 4px rgba(85,214,202,.12)}
+    .status-card p{margin:7px 0 0;color:var(--muted);font-size:.77rem;line-height:1.4}.progress{height:3px;margin-top:11px;background:rgba(255,255,255,.08);border-radius:99px;overflow:hidden}.progress i{display:block;width:0;height:100%;background:var(--accent);transition:width .2s}
+    .selection{position:fixed;z-index:5;left:50%;bottom:max(20px,env(safe-area-inset-bottom));transform:translate(-50%,12px);display:flex;gap:12px;align-items:center;max-width:min(620px,calc(100vw - 40px));padding:9px 9px 9px 15px;border:1px solid rgba(85,214,202,.28);border-radius:14px;background:rgba(8,20,30,.94);box-shadow:0 18px 48px rgba(0,0,0,.35);opacity:0;pointer-events:none;transition:.2s}
+    .selection.show{opacity:1;transform:translate(-50%,0);pointer-events:auto}.selection-name{min-width:0}.selection-name small{display:block;color:var(--accent2);font-size:.7rem;text-transform:uppercase;letter-spacing:.1em}.selection-name strong{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:.86rem;margin-top:2px}.primary-btn{background:var(--accent);color:#05221f;font-weight:750;white-space:nowrap}
+    .loading-shade{position:fixed;z-index:9;inset:0;display:grid;place-items:center;background:radial-gradient(circle at 50% 45%,#122736 0,#071019 58%);transition:opacity .45s,visibility .45s}.loading-shade.done{opacity:0;visibility:hidden}.loader{text-align:center;width:min(330px,80vw)}.loader-mark{margin:auto;width:54px;height:54px;border-radius:17px;background:#112b38;display:grid;place-items:center;color:var(--accent);font-size:1.2rem;font-weight:800}.loader h1{font-size:1.05rem;margin:17px 0 7px}.loader p{color:var(--muted);font-size:.85rem;margin:0}.loader .progress{margin-top:18px;height:4px}
+    .error{color:var(--danger)!important}
+    @media(max-width:680px){.topbar{left:12px;right:12px;top:max(12px,env(safe-area-inset-top))}.brand{padding:8px}.brand div:last-child{display:none}.actions .label{display:none}.actions{padding:4px}.icon-btn{padding:0 10px}.search-panel{left:12px;right:12px;top:auto;bottom:max(12px,env(safe-area-inset-bottom));width:auto;max-height:65vh;transform:translateY(20px)}.search-panel.open{transform:none}.status-card{left:12px;bottom:max(12px,env(safe-area-inset-bottom));max-width:calc(100vw - 24px);min-width:0}.selection{left:12px;right:12px;bottom:max(12px,env(safe-area-inset-bottom));transform:translateY(12px);max-width:none}.selection.show{transform:none}.selection .primary-btn{padding:0 10px}.selection-name{flex:1}}
+  </style>
+  <script type="importmap">{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.186.0/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.186.0/examples/jsm/"}}</script>
+</head>
+<body>
+  <main id="stage" aria-label="Modelo tridimensional interativo"></main>
+  <header class="topbar">
+    <div class="brand"><div class="mark">S</div><div><strong>SOLUMONT</strong><span>Equipamento 007229</span></div></div>
+    <div class="actions">
+      <button class="icon-btn" id="homeBtn" type="button" aria-label="Enquadrar equipamento completo"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 9.5 12 3l8 6.5V21h-6v-6h-4v6H4Z"/></svg><span class="label">Ver completo</span></button>
+      <button class="icon-btn" id="searchBtn" type="button" aria-label="Procurar peça" aria-expanded="false"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="11" cy="11" r="6.5"/><path d="m16 16 4 4"/></svg><span class="label">Procurar peça</span></button>
+      <button class="icon-btn" id="fullscreenBtn" type="button" aria-label="Abrir em tela cheia"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M8 3H3v5M16 3h5v5M8 21H3v-5M16 21h5v-5"/></svg></button>
+    </div>
+  </header>
+  <aside class="search-panel" id="searchPanel" aria-label="Pesquisa de peças">
+    <div class="search-head"><div class="search-head-row"><strong>Localizar peça</strong><small id="partCount">Carregando…</small></div><label class="search-box"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="6.5"/><path d="m16 16 4 4"/></svg><input id="searchInput" type="search" placeholder="Código ou nome da peça" autocomplete="off"></label></div>
+    <ul id="results"></ul>
+  </aside>
+  <section class="status-card" id="statusCard" aria-live="polite"><div class="status-line"><i class="dot"></i><strong id="statusTitle">Preparando o modelo</strong></div><p id="statusText">O primeiro carregamento pode levar alguns segundos.</p><div class="progress" id="statusProgress"><i id="statusBar"></i></div></section>
+  <section class="selection" id="selection"><div class="selection-name"><small>Peça em foco</small><strong id="selectionName"></strong></div><button class="primary-btn" id="clearBtn" type="button">Ver completo</button></section>
+  <div class="loading-shade" id="loading"><div class="loader"><div class="loader-mark">S</div><h1>Carregando equipamento 007229</h1><p id="loadingText">Baixando modelo otimizado…</p><div class="progress"><i id="loadingBar"></i></div></div></div>
+  <script type="module">
+    import * as THREE from 'three';
+    import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+    import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+    import { MeshoptDecoder } from 'three/addons/libs/meshopt_decoder.module.js';
+
+    const stage=document.querySelector('#stage'),loading=document.querySelector('#loading'),loadingBar=document.querySelector('#loadingBar'),loadingText=document.querySelector('#loadingText'),statusTitle=document.querySelector('#statusTitle'),statusText=document.querySelector('#statusText'),statusBar=document.querySelector('#statusBar'),statusProgress=document.querySelector('#statusProgress'),searchPanel=document.querySelector('#searchPanel'),searchBtn=document.querySelector('#searchBtn'),searchInput=document.querySelector('#searchInput'),results=document.querySelector('#results'),partCount=document.querySelector('#partCount'),selection=document.querySelector('#selection'),selectionName=document.querySelector('#selectionName');
+    const scene=new THREE.Scene();scene.background=new THREE.Color(0x071019);scene.fog=new THREE.FogExp2(0x071019,.018);
+    const camera=new THREE.PerspectiveCamera(38,innerWidth/innerHeight,.001,10000);camera.position.set(5,4,7);
+    const renderer=new THREE.WebGLRenderer({antialias:true,powerPreference:'high-performance'});renderer.setPixelRatio(Math.min(devicePixelRatio,1.5));renderer.setSize(innerWidth,innerHeight);renderer.outputColorSpace=THREE.SRGBColorSpace;renderer.toneMapping=THREE.ACESFilmicToneMapping;renderer.toneMappingExposure=1.12;stage.appendChild(renderer.domElement);
+    const controls=new OrbitControls(camera,renderer.domElement);controls.enableDamping=true;controls.dampingFactor=.075;controls.screenSpacePanning=true;controls.minDistance=.01;controls.maxDistance=10000;
+    scene.add(new THREE.HemisphereLight(0xddeeff,0x18202a,2.2));const key=new THREE.DirectionalLight(0xffffff,3.2);key.position.set(5,8,6);scene.add(key);const rim=new THREE.DirectionalLight(0x55d6ca,1.6);rim.position.set(-6,2,-5);scene.add(rim);
+    const ground=new THREE.GridHelper(30,30,0x244454,0x122735);ground.material.transparent=true;ground.material.opacity=.22;scene.add(ground);
+
+    let model,modelBox,parts=[],highlight,dragStart={x:0,y:0};
+    const raycaster=new THREE.Raycaster(),pointer=new THREE.Vector2();
+    function cleanName(raw='Peça'){const tail=raw.split('/').pop()||raw;return tail.split('^')[0].replace(/^Copy of /i,'').replace(/_Valor predeterminado/gi,'').replace(/_Predeterminada/gi,'').trim()||'Peça';}
+    function animateView(box){if(!box||box.isEmpty())return;const sphere=box.getBoundingSphere(new THREE.Sphere());const radius=Math.max(sphere.radius,.001);const fov=THREE.MathUtils.degToRad(camera.fov);const distance=Math.max(radius/Math.sin(fov/2)*1.15,radius*2);const direction=camera.position.clone().sub(controls.target).normalize();if(!Number.isFinite(direction.x)||direction.lengthSq()<.1)direction.set(1,.65,1).normalize();const startPos=camera.position.clone(),startTarget=controls.target.clone(),endTarget=sphere.center.clone(),endPos=endTarget.clone().add(direction.multiplyScalar(distance));const start=performance.now(),duration=720;function step(now){const t=Math.min(1,(now-start)/duration),e=1-Math.pow(1-t,3);camera.position.lerpVectors(startPos,endPos,e);controls.target.lerpVectors(startTarget,endTarget,e);controls.update();if(t<1)requestAnimationFrame(step)}requestAnimationFrame(step);controls.minDistance=Math.max(radius*.03,.002);controls.maxDistance=Math.max(radius*18,10);}
+    function focusPart(part){if(!part)return;highlight?.parent?.remove(highlight);highlight=new THREE.BoxHelper(part.object,0x55d6ca);highlight.material.depthTest=false;highlight.material.transparent=true;highlight.material.opacity=.92;highlight.renderOrder=10;scene.add(highlight);animateView(new THREE.Box3().setFromObject(part.object));selectionName.textContent=part.label;selection.classList.add('show');closeSearch();}
+    function showAll(){highlight?.parent?.remove(highlight);highlight=null;selection.classList.remove('show');animateView(modelBox);}
+    function closeSearch(){searchPanel.classList.remove('open');searchBtn.setAttribute('aria-expanded','false');}
+    function renderResults(){const q=searchInput.value.trim().toLocaleLowerCase('pt-BR');const matches=(q?parts.filter(p=>p.search.includes(q)):parts).slice(0,70);results.innerHTML='';if(!matches.length){results.innerHTML='<li class="empty">Nenhuma peça encontrada.</li>';return}const fragment=document.createDocumentFragment();for(const part of matches){const li=document.createElement('li'),button=document.createElement('button');button.className='result';button.type='button';button.innerHTML=`<strong></strong><span></span>`;button.querySelector('strong').textContent=part.label;button.querySelector('span').textContent=part.raw;button.addEventListener('click',()=>focusPart(part));li.appendChild(button);fragment.appendChild(li)}results.appendChild(fragment)}
+    function registerWebTools(){const context=document.modelContext;if(!context?.registerTool)return;const register=tool=>{try{Promise.resolve(context.registerTool(tool)).catch(console.warn)}catch(error){console.warn(error)}};register({name:'focus_part',title:'Focar peça',description:'Localiza uma peça pelo código ou nome e aproxima a câmera dela sem ocultar o equipamento.',inputSchema:{type:'object',properties:{query:{type:'string',minLength:1}},required:['query'],additionalProperties:false},annotations:{readOnlyHint:false,untrustedContentHint:false},execute(input){if(!input||typeof input.query!=='string'||!input.query.trim())throw new Error('Informe o código ou nome da peça.');const query=input.query.trim().toLocaleLowerCase('pt-BR');const part=parts.find(item=>item.label.toLocaleLowerCase('pt-BR')===query)||parts.find(item=>item.search.includes(query));if(!part)throw new Error('Peça não encontrada.');focusPart(part);return{focused:true,name:part.label}}});register({name:'show_full_model',title:'Ver equipamento completo',description:'Retorna a câmera ao enquadramento completo do equipamento.',inputSchema:{type:'object',properties:{},additionalProperties:false},annotations:{readOnlyHint:false,untrustedContentHint:false},execute(){showAll();return{fullModelVisible:true}}})}
+
+    const loader=new GLTFLoader();loader.setMeshoptDecoder(MeshoptDecoder);loader.load('assets/007229-web-final.glb',gltf=>{model=gltf.scene;scene.add(model);model.updateMatrixWorld(true);parts=[];model.traverse(object=>{if(object.isMesh){const raw=object.name||object.parent?.name||'Peça';const label=cleanName(raw);parts.push({object,raw,label,search:(label+' '+raw).toLocaleLowerCase('pt-BR')})}});modelBox=new THREE.Box3().setFromObject(model);const minY=modelBox.min.y;ground.position.y=minY;const size=modelBox.getSize(new THREE.Vector3()).length();ground.scale.setScalar(Math.max(size/30,.05));parts.sort((a,b)=>a.label.localeCompare(b.label,'pt-BR',{numeric:true}));partCount.textContent=`${parts.length.toLocaleString('pt-BR')} peças`;renderResults();registerWebTools();showAll();loading.classList.add('done');statusTitle.textContent='Modelo pronto';statusText.textContent='Arraste para girar, use a roda para aproximar ou clique em uma peça.';statusProgress.hidden=true;},xhr=>{if(xhr.total){const percent=Math.min(100,xhr.loaded/xhr.total*100);loadingBar.style.width=statusBar.style.width=percent+'%';loadingText.textContent=`${Math.round(percent)}% carregado`;statusText.textContent=`Baixando modelo: ${Math.round(percent)}%`}},error=>{console.error(error);loadingText.textContent='Não foi possível carregar o modelo.';loadingText.classList.add('error');statusTitle.textContent='Falha no carregamento';statusText.textContent='Atualize a página ou verifique sua conexão.';statusText.classList.add('error')});
+
+    renderer.domElement.addEventListener('pointerdown',event=>{dragStart={x:event.clientX,y:event.clientY}});renderer.domElement.addEventListener('pointerup',event=>{if(Math.hypot(event.clientX-dragStart.x,event.clientY-dragStart.y)>5||!model)return;const rect=renderer.domElement.getBoundingClientRect();pointer.x=((event.clientX-rect.left)/rect.width)*2-1;pointer.y=-((event.clientY-rect.top)/rect.height)*2+1;raycaster.setFromCamera(pointer,camera);const hit=raycaster.intersectObjects(parts.map(p=>p.object),false)[0];if(hit){const part=parts.find(p=>p.object===hit.object);focusPart(part)}});
+    searchBtn.addEventListener('click',()=>{const open=!searchPanel.classList.contains('open');searchPanel.classList.toggle('open',open);searchBtn.setAttribute('aria-expanded',String(open));if(open){searchInput.focus();renderResults()}});searchInput.addEventListener('input',renderResults);document.querySelector('#homeBtn').addEventListener('click',showAll);document.querySelector('#clearBtn').addEventListener('click',showAll);document.querySelector('#fullscreenBtn').addEventListener('click',()=>document.fullscreenElement?document.exitFullscreen():document.documentElement.requestFullscreen());
+    addEventListener('keydown',event=>{if(event.key==='Escape'){closeSearch();showAll()}});addEventListener('resize',()=>{camera.aspect=innerWidth/innerHeight;camera.updateProjectionMatrix();renderer.setSize(innerWidth,innerHeight)});
+    renderer.setAnimationLoop(()=>{controls.update();if(highlight)highlight.update();renderer.render(scene,camera)});
+  </script>
+</body>
+</html>
